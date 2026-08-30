@@ -3,6 +3,7 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $syncScript = Join-Path $PSScriptRoot "sync.ps1"
 $taskName = "Daou Mail Sync to Gmail"
+$currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 
 $action = New-ScheduledTaskAction `
     -Execute "powershell.exe" `
@@ -16,7 +17,7 @@ $settings = New-ScheduledTaskSettingsSet `
     -StartWhenAvailable `
     -ExecutionTimeLimit (New-TimeSpan -Hours 4)
 $principal = New-ScheduledTaskPrincipal `
-    -UserId $env:USERNAME `
+    -UserId $currentUser `
     -LogonType Interactive `
     -RunLevel Limited
 
