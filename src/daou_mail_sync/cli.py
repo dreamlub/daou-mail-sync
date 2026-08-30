@@ -33,6 +33,9 @@ def _parser() -> argparse.ArgumentParser:
 
     credentials = subparsers.add_parser("save-daou-password")
     credentials.add_argument("--username", default=os.environ.get("DAOU_IMAP_USER"))
+    credentials.add_argument(
+        "--host", default=os.environ.get("DAOU_IMAP_HOST", "imap.daouoffice.com")
+    )
 
     sync = subparsers.add_parser("sync")
     sync.add_argument("--username", default=os.environ.get("DAOU_IMAP_USER"))
@@ -104,11 +107,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         if args.command == "save-daou-password":
             username = _required(args.username, "DAOU_IMAP_USER")
-            password = getpass.getpass("DaouOffice IMAP password (saved in Windows vault): ")
+            password = getpass.getpass("DaouOffice IMAP password (validated before saving): ")
             if not password:
                 raise ValueError("password must not be empty")
+            with DaouImapSource(username=username, password=password, host=args.host):
+                pass
             keyring.set_password(KEYRING_SERVICE, username, password)
-            print(f"saved DaouOffice password for {username} in Windows credential storage")
+            print(
+                f"validated and saved DaouOffice password for {username} "
+                "in Windows credential storage"
+            )
             return 0
         if args.command == "sync":
             return _sync(args)

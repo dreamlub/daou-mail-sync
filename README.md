@@ -38,9 +38,9 @@ $env:DAOU_IMAP_USER = "tony@waldlust.co.kr"
 .\.venv\Scripts\python.exe -m daou_mail_sync.cli sync
 ```
 
-비밀번호는 화면에 표시되지 않는 프롬프트에서 한 번 입력하며 Windows 자격 증명 저장소에
-보관됩니다. 드라이런은 폴더별 UID만 읽고 메일 본문이나 첨부파일을 가져오지 않으며
-Gmail도 변경하지 않습니다.
+비밀번호는 화면에 표시되지 않는 프롬프트에서 한 번 입력합니다. 다우 IMAP 로그인이
+성공한 경우에만 Windows 자격 증명 저장소에 보관됩니다. 드라이런은 폴더별 UID만 읽고
+메일 본문이나 첨부파일을 가져오지 않으며 Gmail도 변경하지 않습니다.
 
 ## 소량 적용과 전체 복사
 
