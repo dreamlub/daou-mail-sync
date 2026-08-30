@@ -4,6 +4,7 @@ import argparse
 import getpass
 import imaplib
 import os
+import poplib
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -15,6 +16,7 @@ from keyring.errors import KeyringError
 
 from .gmail_client import GmailClient, authorize
 from .imap_source import DaouImapSource
+from .pop3_source import DaouPop3Source
 from .state import SyncState
 from .sync import sync_mail
 
@@ -33,13 +35,14 @@ def _parser() -> argparse.ArgumentParser:
 
     credentials = subparsers.add_parser("save-daou-password")
     credentials.add_argument("--username", default=os.environ.get("DAOU_IMAP_USER"))
-    credentials.add_argument(
-        "--host", default=os.environ.get("DAOU_IMAP_HOST", "imap.daouoffice.com")
-    )
+    credentials.add_argument("--source", choices=("pop3", "imap"), default="pop3")
+    credentials.add_argument("--host")
 
     sync = subparsers.add_parser("sync")
     sync.add_argument("--username", default=os.environ.get("DAOU_IMAP_USER"))
-    sync.add_argument("--host", default=os.environ.get("DAOU_IMAP_HOST", "imap.daouoffice.com"))
+    sync.add_argument("--source", choices=("pop3", "imap"), default="pop3")
+    sync.add_argument("--host")
+    sync.add_argument("--pop-mark-unread", action="store_true")
     sync.add_argument("--password-env")
     sync.add_argument("--token-file", type=Path, default=Path("data/google-token.json"))
     sync.add_argument("--state-db", type=Path, default=Path("data/sync-state.sqlite3"))
@@ -58,6 +61,21 @@ def _required(value: str | None, name: str) -> str:
     return value
 
 
+def _mail_source(
+    args: argparse.Namespace, username: str, password: str
+) -> DaouPop3Source | DaouImapSource:
+    if args.source == "pop3":
+        host = args.host or os.environ.get("DAOU_POP3_HOST", "pop3.daouoffice.com")
+        return DaouPop3Source(
+            username=username,
+            password=password,
+            host=host,
+            mark_unread=getattr(args, "pop_mark_unread", False),
+        )
+    host = args.host or os.environ.get("DAOU_IMAP_HOST", "imap.daouoffice.com")
+    return DaouImapSource(username=username, password=password, host=host)
+
+
 def _sync(args: argparse.Namespace) -> int:
     if args.apply and not args.yes:
         raise ValueError("--apply requires --yes after reviewing a dry-run")
@@ -72,11 +90,7 @@ def _sync(args: argparse.Namespace) -> int:
             raise RuntimeError("DaouOffice password is not saved; run save-daou-password first")
     gmail = GmailClient(args.token_file, args.account) if args.apply else None
     with (
-        DaouImapSource(
-            username=username,
-            password=password,
-            host=args.host,
-        ) as source,
+        _mail_source(args, username, password) as source,
         SyncState(args.state_db) as state,
     ):
         result = sync_mail(
@@ -87,6 +101,7 @@ def _sync(args: argparse.Namespace) -> int:
             requested_folders=args.folder,
             include_spam_trash=args.include_spam_trash,
             limit=args.limit,
+            progress=lambda writes: print(f"progress copied={writes}", flush=True),
         )
     print(
         f"folders={result.folders} discovered={result.discovered} pending={result.pending} "
@@ -107,10 +122,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         if args.command == "save-daou-password":
             username = _required(args.username, "DAOU_IMAP_USER")
-            password = getpass.getpass("DaouOffice IMAP password (validated before saving): ")
+            password = getpass.getpass("DaouOffice mail password (validated before saving): ")
             if not password:
                 raise ValueError("password must not be empty")
-            with DaouImapSource(username=username, password=password, host=args.host):
+            with _mail_source(args, username, password):
                 pass
             keyring.set_password(KEYRING_SERVICE, username, password)
             print(
@@ -126,6 +141,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         RuntimeError,
         FileNotFoundError,
         imaplib.IMAP4.error,
+        poplib.error_proto,
         KeyringError,
         HttpError,
         OSError,

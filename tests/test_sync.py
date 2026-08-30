@@ -70,6 +70,28 @@ def test_apply_limit_and_resume_without_duplicates(tmp_path: Path) -> None:
     assert len(gmail.inserted) == 2
 
 
+def test_progress_is_reported_without_message_content(tmp_path: Path) -> None:
+    source = FakeSource()
+    source.messages = {
+        str(index): SourceMessage(
+            "INBOX",
+            "10",
+            str(index),
+            frozenset(),
+            f"Message-ID: <{index}>\r\n\r\nbody".encode(),
+        )
+        for index in range(1, 26)
+    }
+    source.select = lambda mailbox: ("10", [str(index) for index in range(1, 26)])
+    gmail = FakeGmail()
+    progress: list[int] = []
+
+    with SyncState(tmp_path / "state.sqlite3") as state:
+        sync_mail(source, state, gmail, apply=True, progress=progress.append)
+
+    assert progress == [25]
+
+
 def test_same_raw_message_in_two_folders_is_inserted_once(tmp_path: Path) -> None:
     raw = b"Message-ID: <same>\r\n\r\nsame body"
     source = FakeSource()

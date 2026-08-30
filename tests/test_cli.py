@@ -18,7 +18,7 @@ class FakeSource:
 def test_password_is_validated_before_keyring_save(monkeypatch) -> None:
     saved: list[tuple[str, str, str]] = []
     FakeSource.entered = False
-    monkeypatch.setattr(cli, "DaouImapSource", FakeSource)
+    monkeypatch.setattr(cli, "DaouPop3Source", FakeSource)
     monkeypatch.setattr(cli.getpass, "getpass", lambda _: "secret")
     monkeypatch.setattr(cli.keyring, "set_password", lambda *args: saved.append(args))
 
@@ -35,7 +35,7 @@ def test_invalid_password_is_not_saved(monkeypatch) -> None:
             raise RuntimeError("invalid user or password")
 
     saved: list[tuple[str, str, str]] = []
-    monkeypatch.setattr(cli, "DaouImapSource", RejectingSource)
+    monkeypatch.setattr(cli, "DaouPop3Source", RejectingSource)
     monkeypatch.setattr(cli.getpass, "getpass", lambda _: "wrong")
     monkeypatch.setattr(cli.keyring, "set_password", lambda *args: saved.append(args))
 

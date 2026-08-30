@@ -11,7 +11,7 @@ $env:DAOU_IMAP_USER = "tony@waldlust.co.kr"
 Push-Location $projectRoot
 try {
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    $output = & $python -m daou_mail_sync.cli sync --apply --yes 2>&1
+    $output = & $python -m daou_mail_sync.cli sync --pop-mark-unread --apply --yes 2>&1
     $exitCode = $LASTEXITCODE
     "[$timestamp] exit=$exitCode $($output -join ' ')" | Add-Content -Path $logFile -Encoding UTF8
     exit $exitCode

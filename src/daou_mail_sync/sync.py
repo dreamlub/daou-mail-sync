@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from .gmail_client import GmailClient
@@ -42,6 +43,7 @@ def sync_mail(
     requested_folders: list[str] | None = None,
     include_spam_trash: bool = False,
     limit: int | None = None,
+    progress: Callable[[int], None] | None = None,
 ) -> SyncSummary:
     if apply and gmail is None:
         raise ValueError("Gmail client is required when apply is enabled")
@@ -83,6 +85,8 @@ def sync_mail(
                 gmail_id=gmail_id,
             )
             writes += 1
+            if progress is not None and writes % 25 == 0:
+                progress(writes)
     return SyncSummary(
         folders=len(mailboxes),
         discovered=discovered,
@@ -90,4 +94,3 @@ def sync_mail(
         inserted=inserted,
         relabeled=relabeled,
     )
-
