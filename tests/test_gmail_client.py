@@ -1,4 +1,10 @@
-from daou_mail_sync.gmail_client import GmailClient
+from daou_mail_sync.gmail_client import GmailClient, message_id_from_raw
+
+
+def test_extracts_safe_message_id_for_gmail_search() -> None:
+    assert message_id_from_raw(b"Message-ID: <abc@example.com>\r\n\r\nbody") == "abc@example.com"
+    assert message_id_from_raw(b"Subject: no id\r\n\r\nbody") is None
+    assert message_id_from_raw(b"Message-ID: invalid id\r\n\r\nbody") is None
 
 
 def test_labels_preserve_inbox_unread_and_starred() -> None:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+from email.parser import BytesHeaderParser
 from pathlib import Path
 
 from google.auth.transport.requests import Request
@@ -10,6 +11,14 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.modify"
+
+
+def message_id_from_raw(raw: bytes) -> str | None:
+    headers = BytesHeaderParser().parsebytes(raw, headersonly=True)
+    value = str(headers.get("Message-ID", "")).strip().removeprefix("<").removesuffix(">")
+    if not value or any(character.isspace() for character in value):
+        return None
+    return value
 
 
 def authorize(client_secret: Path, token_file: Path, expected_account: str) -> str:
@@ -103,6 +112,24 @@ class GmailClient:
             .execute()
         )
         return str(result["id"])
+
+    def find_existing(self, raw: bytes) -> str | None:
+        message_id = message_id_from_raw(raw)
+        if message_id is None:
+            return None
+        result = (
+            self.service.users()
+            .messages()
+            .list(
+                userId="me",
+                q=f"rfc822msgid:{message_id}",
+                maxResults=1,
+                includeSpamTrash=False,
+            )
+            .execute()
+        )
+        messages = result.get("messages", [])
+        return str(messages[0]["id"]) if messages else None
 
     def add_labels(self, gmail_id: str, label_ids: list[str]) -> None:
         self.service.users().messages().modify(

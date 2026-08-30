@@ -72,8 +72,13 @@ def sync_mail(
             label_ids = gmail.labels_for(message.folder, message.flags)
             gmail_id = state.gmail_id_for_hash(raw_hash)
             if gmail_id is None:
-                gmail_id = gmail.insert(message.raw, label_ids)
-                inserted += 1
+                gmail_id = gmail.find_existing(message.raw)
+                if gmail_id is None:
+                    gmail_id = gmail.insert(message.raw, label_ids)
+                    inserted += 1
+                else:
+                    gmail.add_labels(gmail_id, label_ids)
+                    relabeled += 1
             else:
                 gmail.add_labels(gmail_id, label_ids)
                 relabeled += 1

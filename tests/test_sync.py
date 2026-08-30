@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 from daou_mail_sync.models import Mailbox, SourceMessage
@@ -30,6 +31,7 @@ class FakeGmail:
     def __init__(self) -> None:
         self.inserted: list[bytes] = []
         self.relabeled: list[str] = []
+        self.existing_id: str | None = None
 
     def labels_for(self, folder: str, flags: frozenset[str]) -> list[str]:
         return ["label"]
@@ -37,6 +39,9 @@ class FakeGmail:
     def insert(self, raw: bytes, label_ids: list[str]) -> str:
         self.inserted.append(raw)
         return f"gmail-{len(self.inserted)}"
+
+    def find_existing(self, raw: bytes) -> str | None:
+        return self.existing_id
 
     def add_labels(self, gmail_id: str, label_ids: list[str]) -> None:
         self.relabeled.append(gmail_id)
@@ -118,3 +123,21 @@ def test_same_raw_message_in_two_folders_is_inserted_once(tmp_path: Path) -> Non
     assert result.relabeled == 1
     assert len(gmail.inserted) == 1
     assert gmail.relabeled == ["gmail-1"]
+
+
+def test_existing_gmail_message_is_labeled_instead_of_inserted(tmp_path: Path) -> None:
+    source = FakeSource()
+    gmail = FakeGmail()
+    gmail.existing_id = "existing-gmail-id"
+
+    with SyncState(tmp_path / "state.sqlite3") as state:
+        result = sync_mail(source, state, gmail, apply=True, limit=1)
+        assert (
+            state.gmail_id_for_hash(hashlib.sha256(source.messages["1"].raw).hexdigest())
+            == "existing-gmail-id"
+        )
+
+    assert result.inserted == 0
+    assert result.relabeled == 1
+    assert gmail.inserted == []
+    assert gmail.relabeled == ["existing-gmail-id"]
