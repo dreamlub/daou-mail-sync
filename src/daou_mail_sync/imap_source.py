@@ -66,7 +66,15 @@ class DaouImapSource:
             self.port,
             timeout=self.timeout_seconds,
         )
-        status, _ = self.client.login(self.username, self.password)
+        try:
+            self.password.encode("ascii")
+        except UnicodeEncodeError:
+            auth_bytes = (
+                b"\0" + self.username.encode("utf-8") + b"\0" + self.password.encode("utf-8")
+            )
+            status, _ = self.client.authenticate("PLAIN", lambda _: auth_bytes)
+        else:
+            status, _ = self.client.login(self.username, self.password)
         if status != "OK":
             raise RuntimeError("DaouOffice IMAP authentication failed")
         return self
