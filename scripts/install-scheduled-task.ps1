@@ -11,7 +11,7 @@ $action = New-ScheduledTaskAction `
 $trigger = New-ScheduledTaskTrigger `
     -Once `
     -At (Get-Date).AddMinutes(1) `
-    -RepetitionInterval (New-TimeSpan -Minutes 15)
+    -RepetitionInterval (New-TimeSpan -Minutes 10)
 $settings = New-ScheduledTaskSettingsSet `
     -MultipleInstances IgnoreNew `
     -StartWhenAvailable `
@@ -27,7 +27,7 @@ Register-ScheduledTask `
     -Trigger $trigger `
     -Settings $settings `
     -Principal $principal `
-    -Description "Copy new DaouOffice IMAP mail into tony.waldlust@gmail.com every 15 minutes." `
+    -Description "Copy new DaouOffice IMAP mail into tony.waldlust@gmail.com every 10 minutes." `
     -Force | Out-Null
 
 Write-Output "Installed scheduled task: $taskName"
