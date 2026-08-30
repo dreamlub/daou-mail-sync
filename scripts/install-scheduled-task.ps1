@@ -1,13 +1,13 @@
 $ErrorActionPreference = "Stop"
 
-$projectRoot = Split-Path -Parent $PSScriptRoot
-$syncScript = Join-Path $PSScriptRoot "sync.ps1"
+$hiddenLauncher = Join-Path $PSScriptRoot "sync-hidden.vbs"
+$wscript = Join-Path $env:SystemRoot "System32\wscript.exe"
 $taskName = "Daou Mail Sync to Gmail"
 $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 
 $action = New-ScheduledTaskAction `
-    -Execute "powershell.exe" `
-    -Argument "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$syncScript`""
+    -Execute $wscript `
+    -Argument "`"$hiddenLauncher`""
 $trigger = New-ScheduledTaskTrigger `
     -Once `
     -At (Get-Date).AddMinutes(1) `
@@ -27,7 +27,7 @@ Register-ScheduledTask `
     -Trigger $trigger `
     -Settings $settings `
     -Principal $principal `
-    -Description "Copy new DaouOffice IMAP mail into tony.waldlust@gmail.com every 10 minutes." `
+    -Description "Copy new DaouOffice mail into tony.waldlust@gmail.com every 10 minutes without showing a console window." `
     -Force | Out-Null
 
 Write-Output "Installed scheduled task: $taskName"
