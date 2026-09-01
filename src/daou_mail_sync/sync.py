@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from .gmail_client import GmailClient
 from .imap_source import DaouImapSource
 from .models import Mailbox
+from .pop3_source import DaouPop3Source
 from .state import SyncState
 
 
@@ -17,6 +18,7 @@ class SyncSummary:
     pending: int = 0
     inserted: int = 0
     relabeled: int = 0
+    restored_unread: int = 0
 
 
 def _selected_mailboxes(
@@ -54,6 +56,7 @@ def sync_mail(
     pending = 0
     inserted = 0
     relabeled = 0
+    restored_unread = 0
     writes = 0
     for mailbox in mailboxes:
         uid_validity, uids = source.select(mailbox)
@@ -82,6 +85,8 @@ def sync_mail(
             else:
                 gmail.add_labels(gmail_id, label_ids)
                 relabeled += 1
+            if isinstance(source, DaouPop3Source) and source.restore_unread(message):
+                restored_unread += 1
             state.record(
                 folder=message.folder,
                 uid_validity=message.uid_validity,
@@ -98,4 +103,5 @@ def sync_mail(
         pending=pending,
         inserted=inserted,
         relabeled=relabeled,
+        restored_unread=restored_unread,
     )

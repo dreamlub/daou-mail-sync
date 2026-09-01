@@ -105,7 +105,8 @@ def _sync(args: argparse.Namespace) -> int:
         )
     print(
         f"folders={result.folders} discovered={result.discovered} pending={result.pending} "
-        f"inserted={result.inserted} relabeled={result.relabeled}"
+        f"inserted={result.inserted} relabeled={result.relabeled} "
+        f"restored_unread={result.restored_unread}"
     )
     if not args.apply:
         print("DRY-RUN: no Gmail messages were created or changed.")
