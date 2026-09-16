@@ -5,13 +5,15 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "daou-mail-sync"
 version = "0.1.0"
-description = "Non-destructive DaouOffice IMAP to personal Gmail copier"
+description = "Read-only DaouOffice collectors: mail into personal Gmail, approval documents into SQLite and Google Sheets"
 requires-python = ">=3.11"
 dependencies = [
   "google-api-python-client>=2.0",
   "google-auth-oauthlib>=1.0",
   "keyring>=25.0",
+  "openpyxl>=3.1",
   "python-dotenv>=1.0",
+  "requests>=2.32",
 ]
 
 [project.optional-dependencies]
@@ -19,6 +21,7 @@ dev = ["pytest>=8.0", "ruff>=0.9"]
 
 [project.scripts]
 daou-mail-sync = "daou_mail_sync.cli:main"
+daou-approval = "daou_approval.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
