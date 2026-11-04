@@ -119,7 +119,8 @@ class DaouPop3Source:
 
         source_message_id = message_id_from_raw(message.raw)
         if source_message_id is None:
-            raise RuntimeError("cannot safely restore unread without a Message-ID")
+            # Without a Message-ID the IMAP match cannot be verified, so leave the flag alone.
+            return False
 
         client = self._client_for_unread_restore()
         status, parts = client.fetch(

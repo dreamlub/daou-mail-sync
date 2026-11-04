@@ -1,4 +1,4 @@
-from daou_mail_sync.models import Mailbox
+from daou_mail_sync.models import Mailbox, SourceMessage
 from daou_mail_sync.pop3_source import DaouPop3Source
 
 
@@ -67,6 +67,19 @@ def test_pop3_restores_matching_source_message_to_unread() -> None:
 
     assert source.restore_unread(message) is True
     assert source._unread_client.stores == [("2", "-FLAGS.SILENT", "(\\Seen)")]
+
+
+def test_pop3_skips_unread_restore_without_message_id() -> None:
+    source = DaouPop3Source("user@example.com", "password", mark_unread=True)
+    source.client = FakePop3()
+    source._unread_client = FakeImap()
+    source.select(Mailbox("INBOX", "INBOX", frozenset()))
+    message = SourceMessage(
+        "INBOX", "POP3-UIDL-v1", "uid-new", frozenset(), b"Subject: x\r\n\r\nbody"
+    )
+
+    assert source.restore_unread(message) is False
+    assert source._unread_client.stores == []
 
 
 def test_pop3_does_not_change_different_imap_message() -> None:

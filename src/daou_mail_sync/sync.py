@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 from collections.abc import Callable
 from dataclasses import dataclass
+from itertools import takewhile
 
 from .gmail_client import GmailClient
 from .imap_source import DaouImapSource
@@ -36,6 +37,14 @@ def _selected_mailboxes(
     return [mailbox for mailbox in selectable if not mailbox.excluded_by_default]
 
 
+def _pending_uids(source: DaouImapSource, uids: list[str], copied: set[str]) -> list[str]:
+    if isinstance(source, DaouPop3Source) and copied:
+        # POP3 lists newest first. Mail older than the newest copy is deliberately not backfilled.
+        # Oldest-first keeps an interrupted run from hiding the uncopied mail behind a newer copy.
+        return list(reversed(list(takewhile(lambda uid: uid not in copied, uids))))
+    return [uid for uid in uids if uid not in copied]
+
+
 def sync_mail(
     source: DaouImapSource,
     state: SyncState,
@@ -62,7 +71,7 @@ def sync_mail(
         uid_validity, uids = source.select(mailbox)
         discovered += len(uids)
         copied = state.copied_uids(mailbox.name, uid_validity)
-        pending_uids = [uid for uid in uids if uid not in copied]
+        pending_uids = _pending_uids(source, uids, copied)
         pending += len(pending_uids)
         if not apply:
             continue

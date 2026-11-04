@@ -4,6 +4,7 @@ import hashlib
 from pathlib import Path
 
 from daou_mail_sync.models import Mailbox, SourceMessage
+from daou_mail_sync.pop3_source import DaouPop3Source
 from daou_mail_sync.state import SyncState
 from daou_mail_sync.sync import sync_mail
 
@@ -141,3 +142,53 @@ def test_existing_gmail_message_is_labeled_instead_of_inserted(tmp_path: Path) -
     assert result.relabeled == 1
     assert gmail.inserted == []
     assert gmail.relabeled == ["existing-gmail-id"]
+
+
+class FakePop3(DaouPop3Source):
+    def __init__(self, uids: list[str]) -> None:
+        self.uids = uids
+        self.fetched: list[str] = []
+        self.mark_unread = False
+
+    def mailboxes(self) -> list[Mailbox]:
+        return [Mailbox("INBOX", "INBOX", frozenset())]
+
+    def select(self, mailbox: Mailbox) -> tuple[str, list[str]]:
+        return "POP3-UIDL-v1", self.uids
+
+    def fetch(self, mailbox: Mailbox, uid_validity: str, uid: str) -> SourceMessage:
+        self.fetched.append(uid)
+        raw = f"Message-ID: <{uid}>\r\n\r\nbody".encode()
+        return SourceMessage("INBOX", uid_validity, uid, frozenset(), raw)
+
+
+def test_pop3_copies_only_mail_newer_than_newest_copy(tmp_path: Path) -> None:
+    with SyncState(tmp_path / "state.sqlite3") as state:
+        state.record(
+            folder="INBOX",
+            uid_validity="POP3-UIDL-v1",
+            uid="3",
+            raw_hash="hash",
+            gmail_id="gmail-3",
+        )
+        source = FakePop3(["5", "4", "3", "2", "1"])
+        result = sync_mail(source, state, FakeGmail(), apply=True)
+
+    assert source.fetched == ["4", "5"]
+    assert result.pending == 2
+
+
+def test_pop3_interrupted_run_resumes_remaining_new_mail(tmp_path: Path) -> None:
+    with SyncState(tmp_path / "state.sqlite3") as state:
+        state.record(
+            folder="INBOX",
+            uid_validity="POP3-UIDL-v1",
+            uid="3",
+            raw_hash="hash",
+            gmail_id="gmail-3",
+        )
+        sync_mail(FakePop3(["5", "4", "3"]), state, FakeGmail(), apply=True, limit=1)
+        source = FakePop3(["5", "4", "3"])
+        sync_mail(source, state, FakeGmail(), apply=True)
+
+    assert source.fetched == ["5"]
