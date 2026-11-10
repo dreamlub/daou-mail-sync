@@ -1,5 +1,7 @@
 # Daou Mail Sync
 
+> **보관됨(2026-11-10):** 이 저장소는 [daou-google-sync](https://github.com/dreamlub/daou-google-sync)의 `packages/daou-mail-sync`로 커밋 이력째 옮겨졌습니다. 새 작업은 그쪽에서 합니다.
+
 다우오피스 메일을 개인 Gmail 계정으로 비파괴 복사하는 도구입니다. 받은메일은 POP3를
 기본 수집 경로로 사용합니다. 다우오피스 IMAP은 `SEARCH`에 항상 빈 결과를 돌려주므로,
 IMAP 폴더(보낸메일함 등)는 `FETCH 1:* (UID)`로 UID 목록을 읽습니다.
