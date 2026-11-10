@@ -121,18 +121,28 @@ class DaouImapSource:
     def select(self, mailbox: Mailbox) -> tuple[str, list[str]]:
         client = self._require_client()
         escaped_name = mailbox.wire_name.replace("\\", "\\\\").replace('"', '\\"')
-        status, _ = client.select(f'"{escaped_name}"', readonly=True)
+        status, exists = client.select(f'"{escaped_name}"', readonly=True)
         if status != "OK":
             raise RuntimeError(f"cannot select IMAP folder: {mailbox.name}")
         uid_validity_response = client.response("UIDVALIDITY")[1]
         if not uid_validity_response:
             raise RuntimeError(f"IMAP folder has no UIDVALIDITY: {mailbox.name}")
         uid_validity = uid_validity_response[0].decode("ascii")
-        status, data = client.uid("SEARCH", None, "ALL")
+        if not exists or exists[0] in (None, b"0"):
+            return uid_validity, []
+        # DaouOffice answers SEARCH ALL with no results, so list UIDs through FETCH instead.
+        status, data = client.fetch("1:*", "(UID)")
         if status != "OK":
-            raise RuntimeError(f"cannot search IMAP folder: {mailbox.name}")
-        raw_uids = data[0] if data else b""
-        return uid_validity, raw_uids.decode("ascii").split()
+            raise RuntimeError(f"cannot list IMAP folder: {mailbox.name}")
+        uids: list[str] = []
+        for item in data or []:
+            metadata = item[0] if isinstance(item, tuple) else item
+            if not isinstance(metadata, bytes):
+                continue
+            match = _UID_PATTERN.search(metadata)
+            if match is not None:
+                uids.append(match.group(1).decode("ascii"))
+        return uid_validity, uids
 
     def fetch(self, mailbox: Mailbox, uid_validity: str, uid: str) -> SourceMessage:
         client = self._require_client()
